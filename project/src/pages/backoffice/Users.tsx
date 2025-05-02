@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card, { CardHeader, CardContent } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
-import { Plus, Search, Edit, Trash, Loader2, X, Eye, EyeOff, CheckCircle, CreditCard } from 'lucide-react';
+import { Plus, Search, Edit, Trash, Loader2, X, Eye, EyeOff, CreditCard } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { formatCurrency } from '../../utils/formatters';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
-import SubscriptionForm from '../../components/backoffice/SubscriptionForm';
 
 interface User {
   id: string;
@@ -16,7 +13,6 @@ interface User {
   name: string;
   created_at: string;
   last_login?: string;
-  status: 'active' | 'inactive';
   subscription?: {
     id: string;
     status: 'active' | 'cancelled' | 'expired';
@@ -27,6 +23,7 @@ interface User {
 }
 
 const BackofficeUsers: React.FC = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -216,26 +213,6 @@ const BackofficeUsers: React.FC = () => {
     }
   };
 
-  const handleUpdateStatus = async (user: User, newStatus: 'active' | 'inactive') => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const { error: updateError } = await supabase
-        .from('backoffice_users')
-        .update({ status: newStatus })
-        .eq('user_id', user.id);
-
-      if (updateError) throw updateError;
-      await loadUsers();
-    } catch (err) {
-      console.error('Error updating user status:', err);
-      setError('Failed to update user status');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleManageSubscription = (userId: string) => {
     setSelectedUserId(userId);
     setShowSubscriptionForm(true);
@@ -311,9 +288,6 @@ const BackofficeUsers: React.FC = () => {
                     Role
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Subscription
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -327,7 +301,7 @@ const BackofficeUsers: React.FC = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center">
+                    <td colSpan={6} className="px-6 py-4 text-center">
                       <Loader2 className="h-6 w-6 text-blue-600 animate-spin mx-auto" />
                     </td>
                   </tr>
@@ -352,15 +326,6 @@ const BackofficeUsers: React.FC = () => {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge className={
-                          user.status === 'active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }>
-                          {user.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
                         {user.subscription ? (
                           <div>
                             <Badge className={
@@ -373,7 +338,10 @@ const BackofficeUsers: React.FC = () => {
                               {user.subscription.plan_name}
                             </Badge>
                             <div className="text-sm text-gray-500 mt-1">
-                              {formatCurrency(user.subscription.plan_price)}/month
+                              {new Intl.NumberFormat('id-ID', {
+                                style: 'currency',
+                                currency: 'IDR'
+                              }).format(user.subscription.plan_price)}/month
                             </div>
                           </div>
                         ) : (
@@ -407,25 +375,6 @@ const BackofficeUsers: React.FC = () => {
                               >
                                 {user.subscription ? 'Update Plan' : 'Add Plan'}
                               </Button>
-                              {user.status === 'active' ? (
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={() => handleUpdateStatus(user, 'inactive')}
-                                  disabled={isLoading}
-                                >
-                                  Deactivate
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="success"
-                                  size="sm"
-                                  onClick={() => handleUpdateStatus(user, 'active')}
-                                  disabled={isLoading}
-                                >
-                                  Activate
-                                </Button>
-                              )}
                               <Button
                                 variant="danger"
                                 size="sm"
@@ -443,7 +392,7 @@ const BackofficeUsers: React.FC = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                       No users found
                     </td>
                   </tr>
@@ -596,14 +545,26 @@ const BackofficeUsers: React.FC = () => {
 
       {/* Subscription Form Modal */}
       {showSubscriptionForm && selectedUserId && (
-        <SubscriptionForm
-          userId={selectedUserId}
-          onClose={() => {
-            setShowSubscriptionForm(false);
-            setSelectedUserId(null);
-          }}
-          onSuccess={handleSubscriptionFormSubmit}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Manage Subscription</h2>
+              <button
+                onClick={() => {
+                  setShowSubscriptionForm(false);
+                  setSelectedUserId(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Subscription form content */}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
