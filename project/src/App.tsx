@@ -20,6 +20,7 @@ import BackofficeProperties from './pages/backoffice/Properties';
 import BackofficeSubscriptionPlans from './pages/backoffice/SubscriptionPlans';
 import BackofficeSubscriptions from './pages/backoffice/Subscriptions';
 import RolePermissions from './pages/backoffice/RolePermissions';
+import BackofficeSettings from './pages/backoffice/Settings';
 import { PropertyProvider, useProperty } from './contexts/PropertyContext';
 import { BackofficeProvider, useBackoffice } from './contexts/BackofficeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -213,7 +214,7 @@ const BackofficeContent: React.FC = () => {
         <Route path="/subscriptions" element={<BackofficeSubscriptions />} />
         <Route path="/subscription-plans" element={<BackofficeSubscriptionPlans />} />
         <Route path="/role-permissions" element={<RolePermissions />} />
-        <Route path="/settings" element={<div>Backoffice Settings</div>} />
+        <Route path="/settings" element={<BackofficeSettings />} />
       </Routes>
     </BackofficeLayout>
   );
