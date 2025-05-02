@@ -317,7 +317,7 @@ const BackofficeDashboard: React.FC = () => {
           }}
         />
         <StatCard
-          title="Total Revenue"
+          title="Property Revenue"
           value={formatCurrency(stats.total_revenue)}
           icon={<CreditCard size={24} />}
           change={{ 
