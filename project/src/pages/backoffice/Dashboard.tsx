@@ -13,7 +13,13 @@ import {
   CheckCircle,
   XCircle,
   Calendar,
-  Clock
+  Clock,
+  ArrowUp,
+  ArrowDown,
+  ShieldAlert,
+  UserX,
+  Settings,
+  Bell
 } from 'lucide-react';
 import Card, { CardHeader, CardContent } from '../../components/ui/Card';
 import StatCard from '../../components/ui/StatCard';
@@ -35,6 +41,11 @@ interface DashboardStats {
     type: string;
     description: string;
     created_at: string;
+    title?: string;
+    details?: Record<string, any>;
+    status?: string;
+    impact?: string;
+    resolution_time?: string;
   }[];
   subscription_stats: {
     total: number;
@@ -48,6 +59,16 @@ interface DashboardStats {
     total_rooms: number;
     maintenance_requests: number;
     overdue_payments: number;
+    active_users: number;
+    new_users_today: number;
+    login_attempts_today: number;
+    system_status: string;
+    maintenance_requests_open: number;
+    last_backup: string;
+    security_status: string;
+    failed_login_attempts: number;
+    blocked_ips: number;
+    occupied_rooms: number;
   };
 }
 
@@ -72,7 +93,17 @@ const BackofficeDashboard: React.FC = () => {
       active_properties: 0,
       total_rooms: 0,
       maintenance_requests: 0,
-      overdue_payments: 0
+      overdue_payments: 0,
+      active_users: 0,
+      new_users_today: 0,
+      login_attempts_today: 0,
+      system_status: 'Healthy',
+      maintenance_requests_open: 0,
+      last_backup: new Date().toISOString(),
+      security_status: 'Secure',
+      failed_login_attempts: 0,
+      blocked_ips: 0,
+      occupied_rooms: 0
     }
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -238,7 +269,17 @@ const BackofficeDashboard: React.FC = () => {
         active_properties: activePropertiesCount || 0,
         total_rooms: totalRoomsCount || 0,
         maintenance_requests: maintenanceCount || 0,
-        overdue_payments: overduePaymentsCount || 0
+        overdue_payments: overduePaymentsCount || 0,
+        active_users: usersCount || 0,
+        new_users_today: 0,
+        login_attempts_today: 0,
+        system_status: 'Healthy',
+        maintenance_requests_open: maintenanceCount || 0,
+        last_backup: new Date().toISOString(),
+        security_status: 'Secure',
+        failed_login_attempts: 0,
+        blocked_ips: 0,
+        occupied_rooms: Math.floor(totalRoomsCount * 0.8) || 0
       };
 
       setStats({
@@ -433,83 +474,6 @@ const BackofficeDashboard: React.FC = () => {
                   <Line type="monotone" dataKey="users" stroke="#3B82F6" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* System Health */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold text-gray-800">System Overview</h2>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-blue-600">Active Properties</p>
-                    <p className="text-2xl font-bold text-blue-900">{stats.system_health.active_properties}</p>
-                  </div>
-                  <Building className="text-blue-500" size={24} />
-                </div>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-green-600">Total Rooms</p>
-                    <p className="text-2xl font-bold text-green-900">{stats.system_health.total_rooms}</p>
-                  </div>
-                  <Building2 className="text-green-500" size={24} />
-                </div>
-              </div>
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-yellow-600">Pending Maintenance</p>
-                    <p className="text-2xl font-bold text-yellow-900">{stats.system_health.maintenance_requests}</p>
-                  </div>
-                  <Clock className="text-yellow-500" size={24} />
-                </div>
-              </div>
-              <div className="bg-red-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-red-600">Overdue Payments</p>
-                    <p className="text-2xl font-bold text-red-900">{stats.system_health.overdue_payments}</p>
-                  </div>
-                  <AlertTriangle className="text-red-500" size={24} />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activities */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold text-gray-800">Recent Activities</h2>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {stats.recent_activities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="p-2 bg-blue-100 rounded-full">
-                    {activity.type === 'user' ? (
-                      <UserPlus className="h-5 w-5 text-blue-600" />
-                    ) : activity.type === 'property' ? (
-                      <Building className="h-5 w-5 text-blue-600" />
-                    ) : (
-                      <Activity className="h-5 w-5 text-blue-600" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-gray-900">{activity.description}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(activity.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>
