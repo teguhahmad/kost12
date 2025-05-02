@@ -8,7 +8,8 @@ import {
   BarChart, 
   Settings, 
   Bell, 
-  LogOut 
+  LogOut,
+  Building2
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick }) => {
   const navigate = useNavigate();
   const menuItems = [
     { id: 'dashboard', label: 'Beranda', icon: <Home size={20} /> },
+    { id: 'properties', label: 'Properti Saya', icon: <Building2 size={20} /> },
     { id: 'tenants', label: 'Penyewa', icon: <Users size={20} /> },
     { id: 'rooms', label: 'Kamar', icon: <DoorClosed size={20} /> },
     { id: 'payments', label: 'Pembayaran', icon: <CreditCard size={20} /> },
