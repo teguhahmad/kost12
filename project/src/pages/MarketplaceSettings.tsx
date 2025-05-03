@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import Card, { CardHeader, CardContent } from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Store, Plus, X, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Store, Plus, X, Loader2, Image as ImageIcon, Globe, CheckCircle } from 'lucide-react';
 import { useProperty } from '../contexts/PropertyContext';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../utils/formatters';
+import FeatureGuard from '../components/ui/FeatureGuard';
+
+interface MarketplaceSettings {
+  marketplace_enabled: boolean;
+  marketplace_price: number;
+  marketplace_status: 'draft' | 'published';
+  description: string;
+  amenities: string[];
+  rules: string[];
+  photos: string[];
+}
 
 const MarketplaceSettings: React.FC = () => {
   const { selectedProperty } = useProperty();
@@ -12,24 +23,23 @@ const MarketplaceSettings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  const [formData, setFormData] = useState({
+  const [settings, setSettings] = useState<MarketplaceSettings>({
     marketplace_enabled: false,
     marketplace_price: 0,
-    marketplace_status: 'draft' as 'draft' | 'published',
+    marketplace_status: 'draft',
     description: '',
-    amenities: [] as string[],
-    rules: [] as string[],
-    photos: [] as string[]
+    amenities: [],
+    rules: [],
+    photos: []
   });
 
   useEffect(() => {
     if (selectedProperty?.id) {
-      loadPropertyDetails();
+      loadSettings();
     }
   }, [selectedProperty]);
 
-  const loadPropertyDetails = async () => {
+  const loadSettings = async () => {
     if (!selectedProperty) return;
 
     try {
@@ -44,7 +54,7 @@ const MarketplaceSettings: React.FC = () => {
 
       if (error) throw error;
 
-      setFormData({
+      setSettings({
         marketplace_enabled: property.marketplace_enabled || false,
         marketplace_price: property.marketplace_price || 0,
         marketplace_status: property.marketplace_status || 'draft',
@@ -54,26 +64,30 @@ const MarketplaceSettings: React.FC = () => {
         photos: property.photos || []
       });
     } catch (err) {
-      console.error('Error loading property details:', err);
-      setError('Failed to load property details');
+      console.error('Error loading marketplace settings:', err);
+      setError('Failed to load marketplace settings');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async () => {
     if (!selectedProperty) return;
 
     try {
       setIsSaving(true);
       setError(null);
-      setSuccess(false);
 
       const { error } = await supabase
         .from('properties')
         .update({
-          ...formData,
+          marketplace_enabled: settings.marketplace_enabled,
+          marketplace_price: settings.marketplace_price,
+          marketplace_status: settings.marketplace_status,
+          description: settings.description,
+          amenities: settings.amenities,
+          rules: settings.rules,
+          photos: settings.photos,
           updated_at: new Date().toISOString()
         })
         .eq('id', selectedProperty.id);
@@ -93,7 +107,7 @@ const MarketplaceSettings: React.FC = () => {
   const handleAmenityAdd = () => {
     const amenity = prompt('Enter new amenity:');
     if (amenity) {
-      setFormData(prev => ({
+      setSettings(prev => ({
         ...prev,
         amenities: [...prev.amenities, amenity]
       }));
@@ -101,7 +115,7 @@ const MarketplaceSettings: React.FC = () => {
   };
 
   const handleAmenityRemove = (index: number) => {
-    setFormData(prev => ({
+    setSettings(prev => ({
       ...prev,
       amenities: prev.amenities.filter((_, i) => i !== index)
     }));
@@ -110,7 +124,7 @@ const MarketplaceSettings: React.FC = () => {
   const handleRuleAdd = () => {
     const rule = prompt('Enter new house rule:');
     if (rule) {
-      setFormData(prev => ({
+      setSettings(prev => ({
         ...prev,
         rules: [...prev.rules, rule]
       }));
@@ -118,7 +132,7 @@ const MarketplaceSettings: React.FC = () => {
   };
 
   const handleRuleRemove = (index: number) => {
-    setFormData(prev => ({
+    setSettings(prev => ({
       ...prev,
       rules: prev.rules.filter((_, i) => i !== index)
     }));
@@ -127,7 +141,7 @@ const MarketplaceSettings: React.FC = () => {
   const handlePhotoAdd = () => {
     const url = prompt('Enter photo URL:');
     if (url) {
-      setFormData(prev => ({
+      setSettings(prev => ({
         ...prev,
         photos: [...prev.photos, url]
       }));
@@ -135,7 +149,7 @@ const MarketplaceSettings: React.FC = () => {
   };
 
   const handlePhotoRemove = (index: number) => {
-    setFormData(prev => ({
+    setSettings(prev => ({
       ...prev,
       photos: prev.photos.filter((_, i) => i !== index)
     }));
@@ -149,44 +163,44 @@ const MarketplaceSettings: React.FC = () => {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-        <p className="mt-2 text-gray-600">Loading marketplace settings...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Marketplace Settings</h1>
-        <Button
-          variant={formData.marketplace_status === 'published' ? 'success' : 'primary'}
-          onClick={() => setFormData(prev => ({
-            ...prev,
-            marketplace_status: prev.marketplace_status === 'published' ? 'draft' : 'published'
-          }))}
-          icon={<Store size={16} />}
-        >
-          {formData.marketplace_status === 'published' ? 'Published' : 'Draft'}
-        </Button>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
-          {error}
+    <FeatureGuard 
+      feature="marketplace_listing"
+      fallback={
+        <div className="p-6 text-center text-gray-500">
+          Marketplace listing is not available in your current plan.
+          Please upgrade to list your property in the marketplace.
         </div>
-      )}
-
-      {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative">
-          Settings saved successfully!
+      }
+    >
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">Pengaturan Marketplace</h1>
+          <Button
+            variant={settings.marketplace_status === 'published' ? 'success' : 'primary'}
+            onClick={() => setSettings(prev => ({
+              ...prev,
+              marketplace_status: prev.marketplace_status === 'published' ? 'draft' : 'published'
+            }))}
+            icon={<Globe size={16} />}
+          >
+            {settings.marketplace_status === 'published' ? 'Published' : 'Draft'}
+          </Button>
         </div>
-      )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative flex items-center">
+            <CheckCircle size={20} className="mr-2" />
+            Settings saved successfully!
+          </div>
+        )}
+
         <Card>
           <CardHeader>
             <h2 className="text-lg font-semibold text-gray-800">Basic Settings</h2>
@@ -200,8 +214,8 @@ const MarketplaceSettings: React.FC = () => {
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.marketplace_enabled}
-                  onChange={(e) => setFormData(prev => ({ 
+                  checked={settings.marketplace_enabled}
+                  onChange={(e) => setSettings(prev => ({ 
                     ...prev, 
                     marketplace_enabled: e.target.checked 
                   }))}
@@ -217,8 +231,8 @@ const MarketplaceSettings: React.FC = () => {
               </label>
               <input
                 type="number"
-                value={formData.marketplace_price}
-                onChange={(e) => setFormData(prev => ({ 
+                value={settings.marketplace_price}
+                onChange={(e) => setSettings(prev => ({ 
                   ...prev, 
                   marketplace_price: parseFloat(e.target.value) || 0 
                 }))}
@@ -231,8 +245,8 @@ const MarketplaceSettings: React.FC = () => {
                 Property Description
               </label>
               <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ 
+                value={settings.description}
+                onChange={(e) => setSettings(prev => ({ 
                   ...prev, 
                   description: e.target.value 
                 }))}
@@ -258,7 +272,7 @@ const MarketplaceSettings: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {formData.amenities.map((amenity, index) => (
+              {settings.amenities.map((amenity, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
@@ -291,7 +305,7 @@ const MarketplaceSettings: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {formData.rules.map((rule, index) => (
+              {settings.rules.map((rule, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
@@ -324,7 +338,7 @@ const MarketplaceSettings: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {formData.photos.map((photo, index) => (
+              {settings.photos.map((photo, index) => (
                 <div key={index} className="relative group">
                   <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
                     {photo ? (
@@ -352,17 +366,17 @@ const MarketplaceSettings: React.FC = () => {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
+        <div className="flex justify-end">
           <Button
-            type="submit"
+            onClick={handleSave}
             disabled={isSaving}
             icon={isSaving ? <Loader2 className="animate-spin" size={16} /> : undefined}
           >
             {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
-      </form>
-    </div>
+      </div>
+    </FeatureGuard>
   );
 };
 
