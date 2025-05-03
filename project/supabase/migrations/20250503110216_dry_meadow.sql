@@ -5,7 +5,6 @@
     - Add marketplace-related columns to properties table:
       - common_amenities (text[])
       - parking_amenities (text[])
-      - rules (text[])
       - photos (text[])
       - description (text)
 
@@ -18,19 +17,39 @@
     - Add RLS policies for CRUD operations
 */
 
--- Add new columns to properties table
+-- Add new columns to properties table individually
 DO $$ 
 BEGIN
+  -- Add common_amenities column if it doesn't exist
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'properties' AND column_name = 'common_amenities'
   ) THEN
-    ALTER TABLE properties 
-      ADD COLUMN common_amenities text[] DEFAULT '{}',
-      ADD COLUMN parking_amenities text[] DEFAULT '{}',
-      ADD COLUMN rules text[] DEFAULT '{}',
-      ADD COLUMN photos text[] DEFAULT '{}',
-      ADD COLUMN description text;
+    ALTER TABLE properties ADD COLUMN common_amenities text[] DEFAULT '{}';
+  END IF;
+
+  -- Add parking_amenities column if it doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'properties' AND column_name = 'parking_amenities'
+  ) THEN
+    ALTER TABLE properties ADD COLUMN parking_amenities text[] DEFAULT '{}';
+  END IF;
+
+  -- Add photos column if it doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'properties' AND column_name = 'photos'
+  ) THEN
+    ALTER TABLE properties ADD COLUMN photos text[] DEFAULT '{}';
+  END IF;
+
+  -- Add description column if it doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'properties' AND column_name = 'description'
+  ) THEN
+    ALTER TABLE properties ADD COLUMN description text;
   END IF;
 END $$;
 
