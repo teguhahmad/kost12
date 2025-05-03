@@ -14,6 +14,7 @@ export interface SubscriptionPlan {
     multi_user: boolean;
     analytics: boolean | 'predictive';
     support: 'basic' | 'priority' | '24/7';
+    marketplace_listing: boolean;
   };
   created_at: string;
   updated_at: string;
