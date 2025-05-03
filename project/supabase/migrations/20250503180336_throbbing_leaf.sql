@@ -12,6 +12,11 @@
 -- Enable RLS
 ALTER TABLE room_types ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies to avoid conflicts
+DROP POLICY IF EXISTS "Superadmins can manage all room types" ON room_types;
+DROP POLICY IF EXISTS "Users can manage room types for their properties" ON room_types;
+DROP POLICY IF EXISTS "Users can view room types" ON room_types;
+
 -- Superadmins can manage all room types
 CREATE POLICY "Superadmins can manage all room types"
   ON room_types
@@ -52,7 +57,7 @@ CREATE POLICY "Users can manage room types for their properties"
     )
   );
 
--- Users can view room types for their properties
+-- Users can view room types for their properties  
 CREATE POLICY "Users can view room types"
   ON room_types
   AS PERMISSIVE
