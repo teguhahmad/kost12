@@ -41,16 +41,42 @@ const SubscriptionPlans: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (formData: Partial<SubscriptionPlan>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     try {
       setIsLoading(true);
       setError(null);
+
+      const formElement = e.target as HTMLFormElement;
+      const formData = new FormData(formElement);
+      
+      const features = {
+        tenant_data: formData.get('feature_tenant_data') === 'on',
+        auto_billing: formData.get('feature_auto_billing') === 'on',
+        billing_notifications: formData.get('feature_billing_notifications') === 'on',
+        financial_reports: formData.get('feature_financial_reports'),
+        data_backup: formData.get('feature_data_backup'),
+        multi_user: formData.get('feature_multi_user') === 'on',
+        analytics: formData.get('feature_analytics') === 'on',
+        support: formData.get('feature_support'),
+        marketplace_listing: formData.get('feature_marketplace_listing') === 'on'
+      };
+
+      const planData = {
+        name: formData.get('name') as string,
+        description: formData.get('description') as string,
+        price: parseInt(formData.get('price') as string),
+        max_properties: parseInt(formData.get('max_properties') as string),
+        max_rooms_per_property: parseInt(formData.get('max_rooms_per_property') as string),
+        features
+      };
 
       if (editingPlan) {
         const { error: updateError } = await supabase
           .from('subscription_plans')
           .update({
-            ...formData,
+            ...planData,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingPlan.id);
@@ -59,7 +85,7 @@ const SubscriptionPlans: React.FC = () => {
       } else {
         const { error: insertError } = await supabase
           .from('subscription_plans')
-          .insert([formData]);
+          .insert([planData]);
 
         if (insertError) throw insertError;
       }
@@ -87,7 +113,6 @@ const SubscriptionPlans: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      // Check if any users are subscribed to this plan
       const { data: subscriptions, error: checkError } = await supabase
         .from('subscriptions')
         .select('id')
@@ -252,7 +277,6 @@ const SubscriptionPlans: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && planToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
@@ -284,7 +308,6 @@ const SubscriptionPlans: React.FC = () => {
         </div>
       )}
 
-      {/* Add/Edit Plan Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
@@ -303,34 +326,7 @@ const SubscriptionPlans: React.FC = () => {
               </button>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formElement = e.target as HTMLFormElement;
-                const formData = new FormData(formElement);
-                
-                const features = {
-                  tenant_data: formData.get('feature_tenant_data') === 'on',
-                  auto_billing: formData.get('feature_auto_billing') === 'on',
-                  billing_notifications: formData.get('feature_billing_notifications') === 'on',
-                  financial_reports: formData.get('feature_financial_reports'),
-                  data_backup: formData.get('feature_data_backup'),
-                  multi_user: formData.get('feature_multi_user') === 'on',
-                  analytics: formData.get('feature_analytics') === 'on',
-                  support: formData.get('feature_support')
-                };
-
-                handleSubmit({
-                  name: formData.get('name') as string,
-                  description: formData.get('description') as string,
-                  price: parseInt(formData.get('price') as string),
-                  max_properties: parseInt(formData.get('max_properties') as string),
-                  max_rooms_per_property: parseInt(formData.get('max_rooms_per_property') as string),
-                  features
-                });
-              }}
-              className="p-6 space-y-4"
-            >
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -501,6 +497,18 @@ const SubscriptionPlans: React.FC = () => {
                       <option value="priority">Priority</option>
                       <option value="24/7">24/7</option>
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        name="feature_marketplace_listing"
+                        defaultChecked={editingPlan?.features.marketplace_listing}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">Marketplace Listing</span>
+                    </label>
                   </div>
                 </div>
               </div>
