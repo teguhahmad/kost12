@@ -95,7 +95,8 @@ const AppContent: React.FC = () => {
     notifications: 'Notifikasi',
     settings: 'Pengaturan',
     properties: 'Properti',
-    marketplace: 'Marketplace'
+    marketplace: 'Marketplace',
+    'marketplace-settings': 'Pengaturan Marketplace'
   };
 
   const navigate = useNavigate();
@@ -196,6 +197,14 @@ const AppContent: React.FC = () => {
           element={
             <ProtectedRoute>
               <Properties />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/marketplace-settings" 
+          element={
+            <ProtectedRoute>
+              <MarketplaceSettings />
             </ProtectedRoute>
           } 
         />
