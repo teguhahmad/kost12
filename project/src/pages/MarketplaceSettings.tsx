@@ -7,8 +7,8 @@ import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../utils/formatters';
 import FeatureGuard from '../components/ui/FeatureGuard';
 
-// Facility categories and their items
-const FACILITIES = {
+// Common facilities categories
+const COMMON_FACILITIES = {
   common: {
     title: 'Fasilitas Umum',
     items: [
@@ -20,29 +20,24 @@ const FACILITIES = {
       'Rooftop', 'TV', 'Taman', 'WiFi'
     ]
   },
-  room: {
-    title: 'Fasilitas Kamar',
-    items: [
-      'AC', 'Bantal', 'Cermin', 'Cleaning service', 'Dapur Pribadi', 'Dispenser',
-      'Guling', 'Jendela', 'Kasur', 'Keset Toilet', 'Kipas Angin', 'Kos Higienis Mingguan',
-      'Kulkas', 'Kursi', 'Lemari Baju', 'Maks. 5 orang/kamar', 'Meja', 'Meja Rias',
-      'Meja makan', 'Sofa', 'TV', 'TV Kabel', 'Tidak ada Kasur', 'Ventilasi',
-      'Wastafel', 'Water Heater', 'microwave'
-    ]
-  },
-  bathroom: {
-    title: 'Fasilitas Kamar Mandi',
-    items: [
-      'K. Mandi Dalam', 'K. Mandi Luar', 'Air panas', 'Bak mandi', 'Bathtub',
-      'Ember mandi', 'Kloset Duduk', 'Kloset Jongkok', 'Shower', 'Wastafel'
-    ]
-  },
   parking: {
-    title: 'Parkir',
+    title: 'Fasilitas Parkir',
     items: [
       'Parkir Mobil', 'Parkir Motor', 'Parkir Motor & Sepeda', 'Parkir Sepeda'
     ]
   }
+};
+
+// Room facilities
+const ROOM_FACILITIES = {
+  title: 'Fasilitas Kamar',
+  items: [
+    'AC', 'Bantal', 'Cermin', 'Cleaning service', 'Dapur Pribadi', 'Dispenser',
+    'Guling', 'Jendela', 'Kasur', 'Keset Toilet', 'Kipas Angin', 'Kos Higienis Mingguan',
+    'Kulkas', 'Kursi', 'Lemari Baju', 'Maks. 5 orang/kamar', 'Meja', 'Meja Rias',
+    'Meja makan', 'Sofa', 'TV', 'TV Kabel', 'Tidak ada Kasur', 'Ventilasi',
+    'Wastafel', 'Water Heater', 'microwave'
+  ]
 };
 
 interface RoomType {
@@ -59,6 +54,7 @@ const MarketplaceSettings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showFacilitiesForm, setShowFacilitiesForm] = useState(false);
   const [showRoomTypeForm, setShowRoomTypeForm] = useState(false);
   const [editingRoomType, setEditingRoomType] = useState<RoomType | null>(null);
   
@@ -66,18 +62,13 @@ const MarketplaceSettings: React.FC = () => {
     marketplace_enabled: false,
     marketplace_status: 'draft' as 'draft' | 'published',
     description: '',
-    amenities: [] as string[],
+    common_amenities: [] as string[],
+    parking_amenities: [] as string[],
     rules: [] as string[],
     photos: [] as string[]
   });
 
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
-  const [roomTypeForm, setRoomTypeForm] = useState<Partial<RoomType>>({
-    name: '',
-    price: 0,
-    description: '',
-    facilities: []
-  });
 
   useEffect(() => {
     if (selectedProperty?.id) {
@@ -112,7 +103,8 @@ const MarketplaceSettings: React.FC = () => {
         marketplace_enabled: property.marketplace_enabled || false,
         marketplace_status: property.marketplace_status || 'draft',
         description: property.description || '',
-        amenities: property.amenities || [],
+        common_amenities: property.common_amenities || [],
+        parking_amenities: property.parking_amenities || [],
         rules: property.rules || [],
         photos: property.photos || []
       });
@@ -134,11 +126,11 @@ const MarketplaceSettings: React.FC = () => {
       setError(null);
 
       const roomTypeData = {
-        ...roomTypeForm,
+        ...editingRoomType,
         property_id: selectedProperty.id
       };
 
-      if (editingRoomType) {
+      if (editingRoomType?.id) {
         const { error } = await supabase
           .from('room_types')
           .update(roomTypeData)
@@ -156,12 +148,6 @@ const MarketplaceSettings: React.FC = () => {
       await loadSettings();
       setShowRoomTypeForm(false);
       setEditingRoomType(null);
-      setRoomTypeForm({
-        name: '',
-        price: 0,
-        description: '',
-        facilities: []
-      });
     } catch (err) {
       console.error('Error saving room type:', err);
       setError('Failed to save room type');
@@ -190,6 +176,38 @@ const MarketplaceSettings: React.FC = () => {
     }
   };
 
+  const handleToggleMarketplace = async () => {
+    if (!selectedProperty) return;
+
+    try {
+      setIsSaving(true);
+      setError(null);
+
+      const { error } = await supabase
+        .from('properties')
+        .update({
+          marketplace_enabled: !settings.marketplace_enabled,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedProperty.id);
+
+      if (error) throw error;
+
+      setSettings(prev => ({
+        ...prev,
+        marketplace_enabled: !prev.marketplace_enabled
+      }));
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error toggling marketplace:', err);
+      setError('Failed to update marketplace status');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveSettings = async () => {
     if (!selectedProperty) return;
 
@@ -200,12 +218,7 @@ const MarketplaceSettings: React.FC = () => {
       const { error } = await supabase
         .from('properties')
         .update({
-          marketplace_enabled: settings.marketplace_enabled,
-          marketplace_status: settings.marketplace_status,
-          description: settings.description,
-          amenities: settings.amenities,
-          rules: settings.rules,
-          photos: settings.photos,
+          ...settings,
           updated_at: new Date().toISOString()
         })
         .eq('id', selectedProperty.id);
@@ -220,24 +233,6 @@ const MarketplaceSettings: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const toggleFacility = (facility: string) => {
-    setSettings(prev => ({
-      ...prev,
-      amenities: prev.amenities.includes(facility)
-        ? prev.amenities.filter(f => f !== facility)
-        : [...prev.amenities, facility]
-    }));
-  };
-
-  const toggleRoomTypeFacility = (facility: string) => {
-    setRoomTypeForm(prev => ({
-      ...prev,
-      facilities: prev.facilities?.includes(facility)
-        ? prev.facilities.filter(f => f !== facility)
-        : [...(prev.facilities || []), facility]
-    }));
   };
 
   if (!selectedProperty?.id) {
@@ -261,16 +256,34 @@ const MarketplaceSettings: React.FC = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">Pengaturan Marketplace</h1>
-          <Button
-            variant={settings.marketplace_status === 'published' ? 'success' : 'primary'}
-            onClick={() => setSettings(prev => ({
-              ...prev,
-              marketplace_status: prev.marketplace_status === 'published' ? 'draft' : 'published'
-            }))}
-            icon={<Globe size={16} />}
-          >
-            {settings.marketplace_status === 'published' ? 'Published' : 'Draft'}
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.marketplace_enabled}
+                  onChange={handleToggleMarketplace}
+                  className="sr-only peer"
+                  disabled={isSaving}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+              <span className="ml-3 text-sm font-medium text-gray-700">
+                {settings.marketplace_enabled ? 'Aktif di Marketplace' : 'Nonaktif di Marketplace'}
+              </span>
+            </div>
+            <Button
+              variant={settings.marketplace_status === 'published' ? 'success' : 'primary'}
+              onClick={() => setSettings(prev => ({
+                ...prev,
+                marketplace_status: prev.marketplace_status === 'published' ? 'draft' : 'published'
+              }))}
+              icon={<Globe size={16} />}
+              disabled={!settings.marketplace_enabled || isSaving}
+            >
+              {settings.marketplace_status === 'published' ? 'Published' : 'Draft'}
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -286,6 +299,49 @@ const MarketplaceSettings: React.FC = () => {
           </div>
         )}
 
+        {/* Common Facilities */}
+        <Card>
+          <CardHeader className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-800">Fasilitas Umum & Parkir</h2>
+            <Button
+              onClick={() => setShowFacilitiesForm(true)}
+              icon={<Edit size={16} />}
+            >
+              Edit Fasilitas
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Fasilitas Umum</h3>
+                <div className="flex flex-wrap gap-2">
+                  {settings.common_amenities.map(facility => (
+                    <span
+                      key={facility}
+                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                    >
+                      {facility}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Fasilitas Parkir</h3>
+                <div className="flex flex-wrap gap-2">
+                  {settings.parking_amenities.map(facility => (
+                    <span
+                      key={facility}
+                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                    >
+                      {facility}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Room Types */}
         <Card>
           <CardHeader className="flex justify-between items-center">
@@ -293,12 +349,6 @@ const MarketplaceSettings: React.FC = () => {
             <Button
               onClick={() => {
                 setEditingRoomType(null);
-                setRoomTypeForm({
-                  name: '',
-                  price: 0,
-                  description: '',
-                  facilities: []
-                });
                 setShowRoomTypeForm(true);
               }}
               icon={<Plus size={16} />}
@@ -324,7 +374,6 @@ const MarketplaceSettings: React.FC = () => {
                         icon={<Edit size={14} />}
                         onClick={() => {
                           setEditingRoomType(roomType);
-                          setRoomTypeForm(roomType);
                           setShowRoomTypeForm(true);
                         }}
                       >
@@ -360,23 +409,36 @@ const MarketplaceSettings: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Facilities */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold text-gray-800">Fasilitas</h2>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-8">
-              {Object.entries(FACILITIES).map(([key, category]) => (
-                <div key={key}>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">{category.title}</h3>
+        {/* Common Facilities Form Modal */}
+        {showFacilitiesForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold">Edit Fasilitas</h2>
+                <button
+                  onClick={() => setShowFacilitiesForm(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Common Facilities */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Fasilitas Umum</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {category.items.map(facility => (
+                    {COMMON_FACILITIES.common.items.map(facility => (
                       <label key={facility} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
-                          checked={settings.amenities.includes(facility)}
-                          onChange={() => toggleFacility(facility)}
+                          checked={settings.common_amenities.includes(facility)}
+                          onChange={() => {
+                            const newAmenities = settings.common_amenities.includes(facility)
+                              ? settings.common_amenities.filter(f => f !== facility)
+                              : [...settings.common_amenities, facility];
+                            setSettings(prev => ({ ...prev, common_amenities: newAmenities }));
+                          }}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                         <span className="text-sm text-gray-700">{facility}</span>
@@ -384,20 +446,50 @@ const MarketplaceSettings: React.FC = () => {
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
-        <div className="flex justify-end">
-          <Button
-            onClick={handleSaveSettings}
-            disabled={isSaving}
-            icon={isSaving ? <Loader2 className="animate-spin" size={16} /> : undefined}
-          >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </div>
+                {/* Parking Facilities */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Fasilitas Parkir</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {COMMON_FACILITIES.parking.items.map(facility => (
+                      <label key={facility} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={settings.parking_amenities.includes(facility)}
+                          onChange={() => {
+                            const newAmenities = settings.parking_amenities.includes(facility)
+                              ? settings.parking_amenities.filter(f => f !== facility)
+                              : [...settings.parking_amenities, facility];
+                            setSettings(prev => ({ ...prev, parking_amenities: newAmenities }));
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{facility}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowFacilitiesForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      handleSaveSettings();
+                      setShowFacilitiesForm(false);
+                    }}
+                  >
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Room Type Form Modal */}
         {showRoomTypeForm && (
@@ -425,8 +517,8 @@ const MarketplaceSettings: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={roomTypeForm.name}
-                    onChange={(e) => setRoomTypeForm(prev => ({ ...prev, name: e.target.value }))}
+                    value={editingRoomType?.name || ''}
+                    onChange={(e) => setEditingRoomType(prev => ({ ...prev!, name: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -438,8 +530,8 @@ const MarketplaceSettings: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    value={roomTypeForm.price}
-                    onChange={(e) => setRoomTypeForm(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                    value={editingRoomType?.price || 0}
+                    onChange={(e) => setEditingRoomType(prev => ({ ...prev!, price: parseFloat(e.target.value) || 0 }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -450,33 +542,32 @@ const MarketplaceSettings: React.FC = () => {
                     Deskripsi
                   </label>
                   <textarea
-                    value={roomTypeForm.description}
-                    onChange={(e) => setRoomTypeForm(prev => ({ ...prev, description: e.target.value }))}
+                    value={editingRoomType?.description || ''}
+                    onChange={(e) => setEditingRoomType(prev => ({ ...prev!, description: e.target.value }))}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-4">Fasilitas</h3>
-                  <div className="space-y-6">
-                    {Object.entries(FACILITIES).map(([key, category]) => (
-                      <div key={key}>
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">{category.title}</h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                          {category.items.map(facility => (
-                            <label key={facility} className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={roomTypeForm.facilities?.includes(facility)}
-                                onChange={() => toggleRoomTypeFacility(facility)}
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span className="text-sm text-gray-700">{facility}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-4">Fasilitas Kamar</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {ROOM_FACILITIES.items.map(facility => (
+                      <label key={facility} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={editingRoomType?.facilities?.includes(facility)}
+                          onChange={() => {
+                            const facilities = editingRoomType?.facilities || [];
+                            const newFacilities = facilities.includes(facility)
+                              ? facilities.filter(f => f !== facility)
+                              : [...facilities, facility];
+                            setEditingRoomType(prev => ({ ...prev!, facilities: newFacilities }));
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{facility}</span>
+                      </label>
                     ))}
                   </div>
                 </div>
